@@ -1,0 +1,14 @@
+work/
+.DS_Store
+node_modules/
+.next/
+*.png
+.snowflake/
+.env
+.env.*
+!.env.example
+!.env.test.example
+.envrc
+# tests/e2e output, if downloaded or RUN_DIR is set inside the repo
+e2e-logs/
+churnguard-e2e/
