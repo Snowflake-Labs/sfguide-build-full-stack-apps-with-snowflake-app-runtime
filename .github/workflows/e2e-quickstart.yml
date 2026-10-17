@@ -1,0 +1,131 @@
+# Maintainer-only: run the ChurnGuard quickstart end to end with Cortex Code.
+# Not part of the quickstart. Setup instructions: tests/e2e/README.md
+name: E2E quickstart (maintainers)
+
+on:
+  workflow_dispatch:
+    inputs:
+      guide_url:
+        description: "Guide URL the agent follows (published guide, or a preview URL to test unpublished changes)"
+        type: string
+        required: true
+      guide_md_url:
+        description: "Optional raw URL of the guide's markdown source (grounds the flow and consistency reviews)"
+        type: string
+        required: false
+        default: ""
+      start_stage:
+        description: "Stage to start from (needs objects kept by an earlier run)"
+        type: choice
+        options: [setup, iteration-1, iteration-2, iteration-3]
+        default: setup
+      keep_resources:
+        description: "Skip cleanup.sql at the end (debugging)"
+        type: boolean
+        default: false
+      cortex_version:
+        description: "Cortex Code CLI version (or latest)"
+        type: string
+        default: latest
+      max_turns:
+        description: "cortex exec --max-turns per stage"
+        type: string
+        default: "80"
+
+permissions:
+  contents: read
+  id-token: write # Snowflake workload identity federation (OIDC)
+
+concurrency:
+  # Object names are fixed, so two runs must never overlap in one account.
+  group: churnguard-e2e
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    # Required reviewers on this environment gate every run; it is also the OIDC subject.
+    environment: churnguard-e2e
+    timeout-minutes: 120
+    env:
+      SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      SNOWFLAKE_USER: ${{ vars.SNOWFLAKE_USER }}
+      SNOWFLAKE_WAREHOUSE: ${{ vars.SNOWFLAKE_WAREHOUSE || 'CHURNGUARD_E2E_CI_WH' }}
+      # Learner scripts run as ACCOUNTADMIN; ci-hook.sh switches the default role after setup.
+      SNOWFLAKE_ROLE: ACCOUNTADMIN
+      SNOWFLAKE_CONNECTION: quickstart
+      REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
+      MAX_TURNS: ${{ inputs.max_turns }}
+      GUIDE_URL: ${{ inputs.guide_url }}
+      GUIDE_MD: ${{ inputs.guide_md_url }}
+      STAGE_HOOK: ${{ github.workspace }}/tests/e2e/ci-hook.sh
+    steps:
+      - name: Set run directory
+        # The runner context isn't available in job-level env.
+        run: echo "RUN_DIR=$RUNNER_TEMP/churnguard-e2e" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+
+      - name: Install psql and envsubst
+        run: sudo apt-get update -q && sudo apt-get install -y -q postgresql-client gettext-base
+
+      - name: Setup Snowflake CLI + Cortex Code (OIDC)
+        uses: snowflakedb/snowflake-actions@c30b16c0d61f26a9fa90906f255fa665b5f2abe1 # v3.3.2
+        with:
+          use-oidc: true
+          cortex-code: true
+          cortex-version: ${{ inputs.cortex_version }}
+          connection-name: quickstart
+
+      - name: Verify Snowflake OIDC connection
+        run: |
+          snow connection test -c quickstart \
+            || { echo "::error::OIDC connection failed. Check the CHURNGUARD_E2E_CI user's WORKLOAD_IDENTITY subject (tests/e2e/README.md)."; exit 1; }
+
+      - name: Prepare to resume after setup
+        # A fresh runner has no previous run log. Resuming only works if the Snowflake
+        # objects from earlier stages still exist (a previous run with keep_resources).
+        if: inputs.start_stage != 'setup'
+        run: |
+          tests/e2e/ci-hook.sh setup >/dev/null
+          echo "::notice::Starting at ${{ inputs.start_stage }}; earlier stages' Snowflake objects must still exist."
+
+      - name: Run quickstart with Cortex Code
+        run: tests/e2e/run-all.sh "${{ inputs.start_stage }}"
+
+      - name: Summarize E2E results
+        if: always()
+        run: |
+          if [ -s "$RUN_DIR/work/coco-run-log.md" ]; then
+            tests/e2e/summarize.sh | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No run log was written." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - name: Upload run logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: churnguard-e2e-logs-${{ github.run_id }}
+          path: ${{ env.RUN_DIR }}/work/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Clean up quickstart objects
+        if: always() && !inputs.keep_resources
+        run: |
+          eval "$(tests/e2e/ci-hook.sh cleanup)"
+          {
+            echo "## Cleanup"
+            echo '```'
+            snow sql -f scripts/cleanup.sql -c quickstart --role ACCOUNTADMIN 2>&1 | tail -40
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          cortex mcp remove churnguard >/dev/null 2>&1 || true
