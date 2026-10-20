@@ -48,8 +48,7 @@ UI:
 Constraints:
 - Query only the local CHURN_METRICS and CHURN_TRENDS tables
   (do NOT query SNOWFLAKE_SAMPLE_DATA directly -- the fact tables are too large)
-- Add the usage markers from AGENTS.md (APP_ORIGIN in app.yml,
-  QUERY_TAG on the connection with "iter":"1")
+- Add the usage marker from AGENTS.md (APP_ORIGIN in app.yml)
 
 Output:
 - Deployed interactive dashboard at the Application Service URL

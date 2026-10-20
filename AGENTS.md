@@ -32,9 +32,9 @@
 - Deploy apps with `snow app deploy --connection quickstart`
 - Use SAMPLE clauses on TPCDS fact tables (10TB+ dataset) for demo performance
 
-## Usage Markers
+## Usage Marker
 
-ChurnGuard carries two anonymous labels that tell Snowflake DevRel the app started from this quickstart. They contain no customer data. Add them, and keep them in every later iteration:
+ChurnGuard carries one anonymous label that tells Snowflake DevRel the app started from this quickstart. It contains no customer data. Add it, and keep it in every later iteration:
 
 - **App origin.** A top-level `environment_variables` block in `churnguard/app.yml` (a sibling of `install:` and `run:`, not nested under `run:`):
   ```yaml
@@ -42,9 +42,5 @@ ChurnGuard carries two anonymous labels that tell Snowflake DevRel the app start
     - name: APP_ORIGIN
       value: "devrel:churnguard:v1"
   ```
-- **Query tag.** Set `QUERY_TAG` on the app's Snowflake connection in `churnguard/lib/snowflake.ts`, so every query the app runs carries it. Set `iter` to the current iteration number (1, 2 or 3):
-  ```json
-  {"origin":"devrel","asset":"churnguard","v":"1","iter":"1"}
-  ```
 
-To opt out, delete both. The app works the same without them.
+The marker lives only in `app.yml`. Don't edit `churnguard/lib/snowflake.ts` or other template files for it. To opt out, delete it. The app works the same without it.
