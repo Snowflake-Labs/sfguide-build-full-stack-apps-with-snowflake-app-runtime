@@ -33,7 +33,7 @@ These tests run the whole quickstart the way a learner would: [Cortex Code](http
 
 ## What a run costs
 
-A full run takes about an hour (setup a few minutes; iteration 1 about 10–15; iteration 2 about 20, including 3–5 for Postgres to provision; iteration 3 about 25). Model-stream drops add retries on top. It creates everything the quickstart creates: an Application Service, a Postgres instance, a mirror, a dynamic table and an alert that refresh every minute, and a daily serverless task. Run `scripts/cleanup.sql` afterwards (CI does this for you). Use a dedicated test account if you can.
+A full run takes about an hour (setup a few minutes; iteration 1 about 10–15; iteration 2 about 15; iteration 3 about 25). Model-stream drops add retries on top. It creates everything the quickstart creates: an Application Service, the ACTIONS table, a dynamic table and an alert that refresh every minute, and a daily serverless task. Run `scripts/cleanup.sql` afterwards (CI does this for you). Use a dedicated test account if you can.
 
 Each stage writes to `$RUN_DIR/work/`:
 
@@ -72,7 +72,7 @@ To share results with other guide tools:
 
 ## Run locally
 
-Requirements: `cortex`, `snow` (3.26+), `git`, `node` 20+, `npm`, `psql`, `envsubst`, `curl`, `python3` (for `summarize.sh`), and a Snowflake CLI connection whose user can use ACCOUNTADMIN.
+Requirements: `cortex`, `snow` (3.26+), `git`, `node` 20+, `npm`, `envsubst`, `curl`, `python3` (for `summarize.sh`), and a Snowflake CLI connection whose user can use ACCOUNTADMIN.
 
 Put your settings in `tests/e2e/.env.test` (git-ignored). `GUIDE_URL` is required:
 

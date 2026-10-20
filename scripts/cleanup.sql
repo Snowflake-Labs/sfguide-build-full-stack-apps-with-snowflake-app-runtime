@@ -16,9 +16,9 @@
 -- cleanup.sql -- Remove all quickstart resources
 -- Run as ACCOUNTADMIN
 --
--- Safe to run from any branch: every statement skips objects that a later
--- iteration creates, so it also removes Postgres resources that keep
--- consuming credits after iteration 2.
+-- Safe to run from any branch: every statement skips objects that don't
+-- exist. It also removes the Postgres resources that earlier versions of this
+-- quickstart created in iteration 2, which keep using credits until dropped.
 -- =============================================================================
 
 USE ROLE ACCOUNTADMIN;
@@ -36,11 +36,11 @@ DROP VIEW IF EXISTS SFQUICKSTART_CHURNGUARD.PUBLIC.CUSTOMER_RECOMMENDATIONS;
 DROP TABLE IF EXISTS SFQUICKSTART_CHURNGUARD.PUBLIC.RETENTION_PLAYBOOK;
 
 -- ---------------------------------------------------------------------------
--- Postgres + mirroring cleanup (iteration 2)
+-- Postgres + mirroring cleanup (earlier versions of iteration 2)
 -- Order matters: mirror first, then instance
 -- ---------------------------------------------------------------------------
 
--- The instance and mirror are owned by the quickstart role (created in iteration 2)
+-- The instance and mirror are owned by the quickstart role (created by earlier versions of iteration 2)
 USE ROLE SFQUICKSTART_CHURNGUARD_ROLE;
 
 -- Drop the data mirror. By default this also drops the CHURNGUARD_MIRROR
@@ -91,7 +91,7 @@ DROP NETWORK POLICY IF EXISTS CHURNGUARD_PG_POLICY;
 
 -- Network rules live in the quickstart schema, so DROP DATABASE below removes
 -- them too. Explicit drops for clarity, including the temporary local-IP rule
--- that iteration 2 detaches after its psql steps. A rule still attached to a
+-- that earlier versions of iteration 2 detached after their psql steps. A rule still attached to a
 -- network policy with another name can't be dropped: the message names it,
 -- and the script carries on.
 EXECUTE IMMEDIATE $$
@@ -141,4 +141,5 @@ SHOW NETWORK POLICIES LIKE 'CHURNGUARD%';
 
 -- Local leftovers (not in Snowflake), remove them yourself if you like:
 --   cortex mcp remove churnguard
---   CHURNGUARD_PG entries in ~/.pgpass and ~/.pg_service.conf
+--   CHURNGUARD_PG entries in ~/.pgpass and ~/.pg_service.conf, if you used
+--   psql with an earlier version of this quickstart
