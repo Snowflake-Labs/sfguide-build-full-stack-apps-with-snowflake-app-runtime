@@ -32,11 +32,11 @@ const TYPE_STYLE: Record<string, string> = {
   Email: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
 }
 
-async function setProposalStatus(id: number, status: "approved" | "dismissed") {
+async function setProposalStatus(id: number, status: "approved" | "dismissed", reason?: string) {
   const res = await fetch(`/api/proposals/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, reason }),
   })
   if (!res.ok) throw new Error((await res.json()).error ?? "Failed to update proposal")
 }
@@ -57,7 +57,8 @@ async function approve(p: Proposal): Promise<"approved" | "duplicate"> {
     }),
   })
   if (res.status === 409) {
-    await setProposalStatus(p.id, "dismissed")
+    const { error } = await res.json().catch(() => ({ error: "already flagged" }))
+    await setProposalStatus(p.id, "dismissed", error)
     return "duplicate"
   }
   if (!res.ok) throw new Error((await res.json()).error ?? "Failed to create action")

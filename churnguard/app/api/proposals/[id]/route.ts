@@ -23,12 +23,13 @@ const STATUSES = ["approved", "dismissed"]
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     const id = Number((await ctx.params).id)
-    const { status } = await req.json()
+    const { status, reason } = await req.json()
     if (!Number.isInteger(id)) return Response.json({ error: "Invalid proposal id" }, { status: 400 })
     if (!STATUSES.includes(status)) return Response.json({ error: "Invalid status" }, { status: 400 })
     const rows = await querySnowflake(
-      `UPDATE SFQUICKSTART_CHURNGUARD.PUBLIC.PROPOSED_ACTIONS SET STATUS = ? WHERE PROPOSAL_ID = ? AND STATUS = 'pending'`,
-      { binds: [status, id] },
+      `UPDATE SFQUICKSTART_CHURNGUARD.PUBLIC.PROPOSED_ACTIONS SET STATUS = ?, STATUS_REASON = ?
+       WHERE PROPOSAL_ID = ? AND STATUS = 'pending'`,
+      { binds: [status, reason == null ? null : String(reason).slice(0, 500), id] },
     )
     const updated = Number((rows[0] as Record<string, unknown> | undefined)?.["number of rows updated"] ?? 0)
     if (!updated) return Response.json({ error: "Proposal not found or already handled" }, { status: 404 })
