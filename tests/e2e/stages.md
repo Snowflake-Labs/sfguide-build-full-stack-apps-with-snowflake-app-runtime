@@ -21,25 +21,23 @@
 - Roles:
   - ACCOUNTADMIN only for scripts the guide marks "Run as ACCOUNTADMIN" (setup.sql, grants.sql,
     iteration setup scripts, cleanup.sql).
-  - SFQUICKSTART_CHURNGUARD_ROLE for everything else (data load, app build, deploy, Postgres, agent).
+  - SFQUICKSTART_CHURNGUARD_ROLE for everything else (data load, app build, deploy, agent).
   - After setup the connection's default role is SFQUICKSTART_CHURNGUARD_ROLE, as the guide expects.
     Still pass --role AND --warehouse SFQUICKSTART_CHURNGUARD_WH explicitly on every snow command; for
     ACCOUNTADMIN scripts pass --role ACCOUNTADMIN. The guide's `--connection quickstart` is the
     connection named in this prompt.
 - Expected script order (for the ORDER review): setup.sql -> grants.sql -> setup-data.sql; in
-  iteration 2, grants -> the Postgres prompt -> iteration-2-setup.sql, which needs the mirror;
-  in iteration 3, grants -> iteration-3-setup.sql -> the prompts.
+  iteration 2, grants -> iteration-2-setup.sql -> the prompt; in iteration 3, grants -> iteration-3-setup.sql -> the prompts.
 - Parallel sections (for the consistency review): Environment Setup and each Iteration (Setup,
   Prompt(s), What Happens, Key Concepts, Verify). The repeated pattern is: merge the branch, rerun
   grants, run the iteration setup script, run the prompt(s), verify.
 - Cleanup: scripts/cleanup.sql. Drop order, dependents first: app service, agent, semantic view,
-  mirror, Postgres instance, EAI, network policy, database, role.
+  database, warehouse, role. It also drops Postgres objects that earlier versions of the guide created.
 
 ### Extra guardrails
-- STOP and write the reason under "Blocked" if the Postgres instance CHURNGUARD_PG already exists when
-  the guide says to create it, AND the log has no record of this run creating it (if the log shows
-  this run created it, reuse it: never create a second instance, never recreate it).
-- Create the Postgres instance only during STAGE: iteration-2, and at most one (CHURNGUARD_PG).
+- Never create a Postgres instance, External Access Integration, network policy, or hybrid table. The
+  guide runs on trial accounts, which reject External Access Integrations and hybrid tables. If a prompt
+  or skill steers toward one, record a HIGH `flow` friction item instead.
 - Never use, create, or suggest a Snowflake-managed MCP server (CREATE MCP SERVER) or any MCP approach
   other than the one in prompts/03-add-agent.md. Test only what the guide builds.
 
@@ -57,27 +55,27 @@
 - `curl -s -o /dev/null -w '%{http_code}' <app-url>` (unauthenticated) -> a 302 to Snowflake login is a
   PASS for "ingress is protected".
 
-- Usage markers (iter 1): churnguard/app.yml has a top-level `environment_variables` entry
-  APP_ORIGIN = devrel:churnguard:v1, and the app's Snowflake connection code sets QUERY_TAG to
-  {"origin":"devrel","asset":"churnguard","v":"1","iter":"1"}. Missing or wrong markers are not a
-  FAIL: record a HIGH `flow` friction item saying which marker CoCo dropped or changed. Best effort:
-  after using the app, look for the tag in query history
-  (`SELECT query_tag, COUNT(*) FROM TABLE(SFQUICKSTART_CHURNGUARD.INFORMATION_SCHEMA.QUERY_HISTORY_BY_WAREHOUSE(WAREHOUSE_NAME => 'SFQUICKSTART_CHURNGUARD_WH')) WHERE query_tag ILIKE '%churnguard%' GROUP BY 1`);
-  if the role can't see the app's queries, mark that part SKIPPED with the error.
+- Usage marker (iter 1): churnguard/app.yml has a top-level `environment_variables` entry
+  APP_ORIGIN = devrel:churnguard:v1. A missing or wrong marker is not a FAIL: record a HIGH `flow`
+  friction item. The marker lives only in app.yml: if CoCo edited churnguard/lib/snowflake.ts for
+  it (for example to add a QUERY_TAG), record a HIGH `flow` friction item.
 
 ## STAGE: iteration-2
-- Postgres instance CHURNGUARD_PG is READY; the mirror is REPLICATING.
-- After the guide's lock-down step, `DESCRIBE NETWORK POLICY CHURNGUARD_PG_POLICY` allows only
-  CHURNGUARD_PG_INGRESS_RULE (the temporary CHURNGUARD_PG_LOCAL_IP_RULE is no longer attached).
+- ACTIONS exists in SFQUICKSTART_CHURNGUARD.PUBLIC, ACTION_SUMMARY is an ACTIVE dynamic table, and
+  ESCALATION_ALERT is started (SHOW TABLES, SHOW DYNAMIC TABLES, SHOW ALERTS).
+- churnguard/app.yml has no `secrets` or `external_access_integrations` block.
+- Flag one customer with Escalate through the app's POST /api/actions: on the deployed app if an
+  authenticated client is available, otherwise with `npm run dev` against the same connection. ACTIONS
+  gains one row. Flagging the same customer again is rejected with "already flagged", and ACTIONS still
+  has exactly one open action for that customer. If neither path works, mark SKIPPED with the reason.
+- With that Escalate action open, NOTIFICATIONS gets a critical row within about 2 minutes (the dynamic
+  table refreshes, then the alert runs). SKIPPED if the flag check was skipped.
 - App redeployed at the same URL as iteration-1.
 
-- Usage markers (iter 2): churnguard/app.yml has a top-level `environment_variables` entry
-  APP_ORIGIN = devrel:churnguard:v1, and the app's Snowflake connection code sets QUERY_TAG to
-  {"origin":"devrel","asset":"churnguard","v":"1","iter":"2"}. Missing or wrong markers are not a
-  FAIL: record a HIGH `flow` friction item saying which marker CoCo dropped or changed. Best effort:
-  after using the app, look for the tag in query history
-  (`SELECT query_tag, COUNT(*) FROM TABLE(SFQUICKSTART_CHURNGUARD.INFORMATION_SCHEMA.QUERY_HISTORY_BY_WAREHOUSE(WAREHOUSE_NAME => 'SFQUICKSTART_CHURNGUARD_WH')) WHERE query_tag ILIKE '%churnguard%' GROUP BY 1`);
-  if the role can't see the app's queries, mark that part SKIPPED with the error.
+- Usage marker (iter 2): churnguard/app.yml has a top-level `environment_variables` entry
+  APP_ORIGIN = devrel:churnguard:v1. A missing or wrong marker is not a FAIL: record a HIGH `flow`
+  friction item. The marker lives only in app.yml: if CoCo edited churnguard/lib/snowflake.ts for
+  it (for example to add a QUERY_TAG), record a HIGH `flow` friction item.
 
 ## STAGE: iteration-3
 - Semantic view and agent exist (SHOW SEMANTIC VIEWS / SHOW AGENTS in SFQUICKSTART_CHURNGUARD.PUBLIC).
@@ -93,17 +91,14 @@
   MCP-dependent check that follows (e.g. the duplicate flag via flag_customer) is SKIPPED for the
   same reason unless another authenticated client is available.
 - Duplicate flag guard: flagging a customer that already has an open action (MCP flag_customer or
-  POST /api/actions) is rejected with an "already flagged" message, and Postgres still has exactly one
+  POST /api/actions) is rejected with an "already flagged" message, and ACTIONS still has exactly one
   open action for that customer. If no authenticated client is available, mark SKIPPED with the reason.
 - Generic MCP client: `curl -s -i -X POST <app-url>/api/mcp -H 'Content-Type: application/json'
     -H 'Accept: application/json, text/event-stream'
     -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`
   Record the HTTP status. A 302 to the Snowflake login is the documented limitation: mark LIMITATION.
   Any other non-200 result is a FAIL.
-- Usage markers (iter 3): churnguard/app.yml has a top-level `environment_variables` entry
-  APP_ORIGIN = devrel:churnguard:v1, and the app's Snowflake connection code sets QUERY_TAG to
-  {"origin":"devrel","asset":"churnguard","v":"1","iter":"3"}. Missing or wrong markers are not a
-  FAIL: record a HIGH `flow` friction item saying which marker CoCo dropped or changed. Best effort:
-  after using the app, look for the tag in query history
-  (`SELECT query_tag, COUNT(*) FROM TABLE(SFQUICKSTART_CHURNGUARD.INFORMATION_SCHEMA.QUERY_HISTORY_BY_WAREHOUSE(WAREHOUSE_NAME => 'SFQUICKSTART_CHURNGUARD_WH')) WHERE query_tag ILIKE '%churnguard%' GROUP BY 1`);
-  if the role can't see the app's queries, mark that part SKIPPED with the error.
+- Usage marker (iter 3): churnguard/app.yml has a top-level `environment_variables` entry
+  APP_ORIGIN = devrel:churnguard:v1. A missing or wrong marker is not a FAIL: record a HIGH `flow`
+  friction item. The marker lives only in app.yml: if CoCo edited churnguard/lib/snowflake.ts for
+  it (for example to add a QUERY_TAG), record a HIGH `flow` friction item.
