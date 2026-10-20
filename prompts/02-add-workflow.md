@@ -85,7 +85,8 @@ Constraints:
 - Return timestamps to the browser as ISO 8601 strings
 - app.yml doesn't change in this iteration: no secrets or
   external access integrations are needed
-- Do not modify the existing read-only dashboard views
+- Keep the existing dashboard views working. Adding the Flag for
+  Retention column to the customer table is the only dashboard change
 - Keep the APP_ORIGIN usage marker from AGENTS.md
 
 Output:

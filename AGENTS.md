@@ -29,6 +29,7 @@
 - All app code lives in the `churnguard/` directory
 - All Snowflake objects go in SFQUICKSTART_CHURNGUARD.PUBLIC
 - Use database namespace for object identification (no prefix on table names)
+- Run `snow app setup` with `--database SFQUICKSTART_CHURNGUARD --schema PUBLIC`, so the app deploys to the quickstart schema, not your personal database
 - Deploy apps with `snow app deploy --connection quickstart`
 - Use SAMPLE clauses on TPCDS fact tables (10TB+ dataset) for demo performance
 

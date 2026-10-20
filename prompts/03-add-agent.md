@@ -46,9 +46,11 @@ Requirements:
   (pending) via querySnowflake: each card shows customer key, action
   type, and rule reason. "Approve All" button above the list;
   per-card Approve / Dismiss. Approve writes to ACTIONS via
-  POST /api/actions and sets PROPOSED_ACTIONS.STATUS = 'approved'.
+  POST /api/actions, assigned to "Retention team", and sets
+  PROPOSED_ACTIONS.STATUS = 'approved'.
   If POST /api/actions answers 409 "already flagged", mark the
-  proposal 'dismissed' with that reason instead of failing. Approve All
+  proposal 'dismissed' with STATUS_REASON set to that message instead
+  of failing. Approve All
   approves the rest and reports how many were skipped as duplicates.
   Tab badge showing pending count.
 - Toast notification when pending proposals exist on page load
