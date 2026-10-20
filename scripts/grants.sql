@@ -65,3 +65,21 @@ GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE_SAMPLE_DATA
 -- ---------------------------------------------------------------------------
 GRANT EXECUTE ALERT ON ACCOUNT
     TO ROLE SFQUICKSTART_CHURNGUARD_ROLE;
+
+-- ---------------------------------------------------------------------------
+-- 6. Serverless tasks (iteration 3 -- agentic automation)
+-- ---------------------------------------------------------------------------
+GRANT EXECUTE MANAGED TASK ON ACCOUNT
+    TO ROLE SFQUICKSTART_CHURNGUARD_ROLE;
+GRANT EXECUTE TASK ON ACCOUNT
+    TO ROLE SFQUICKSTART_CHURNGUARD_ROLE;
+
+-- ---------------------------------------------------------------------------
+-- 7. Cortex AI (iteration 3)
+--    CORTEX_USER covers Cortex Agents, Cortex Analyst and Data to Chart.
+-- ---------------------------------------------------------------------------
+GRANT DATABASE ROLE SNOWFLAKE.CORTEX_USER TO ROLE SFQUICKSTART_CHURNGUARD_ROLE;
+
+-- No object grants are needed for iteration 3 setup objects. The role owns
+-- the schema and creates the playbook, view, procedure, and task itself, so
+-- it already owns them. Run this script before iteration-3-setup.sql.
