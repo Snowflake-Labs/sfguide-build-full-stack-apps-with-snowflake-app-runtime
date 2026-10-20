@@ -29,25 +29,24 @@ flowchart LR
   explore["Iteration 1: See the Data"] --> act["Iteration 2: Act on the Data"]
   act --> agent["Iteration 3: Let the Agent Act"]
   explore -.- e1["Read-only churn dashboard"]
-  act -.- a1["Retention workflow on Snowflake Postgres"]
+  act -.- a1["Retention workflow on Snowflake tables"]
   agent -.- g1["Cortex Agent proposes, people approve"]
 ```
 
 | Iteration | App Type | What You Build |
 |-----------|----------|----------------|
 | 1 - Explorer | Advanced data exploration | Churn risk dashboard with KPIs, segment charts, trend charts |
-| 2 - Workflow | Workflow app | Action Board, retention action forms, write-back to Snowflake Postgres, data mirroring, alert-driven notifications |
+| 2 - Workflow | Workflow app | Action Board, retention action forms, write-back to a Snowflake table, dynamic tables, alert-driven notifications |
 | 3 - Agent | AI app with Cortex Agent | Chat panel, playbook-grounded proposals, Agent Suggested tab, daily staging task, MCP server |
 
 Each iteration builds on the previous one, and each one produces a deployable app, so you can stop after any of them.
 
 ## Prerequisites
 
-- A [Snowflake account](https://signup.snowflake.com/) with Snowflake App Runtime enabled and **ACCOUNTADMIN** privileges. Not available on [trial accounts](https://docs.snowflake.com/en/user-guide/admin-trial-account).
+- A [Snowflake account](https://signup.snowflake.com/) with Snowflake App Runtime enabled and **ACCOUNTADMIN** privileges. In a hands-on lab, use the account your lab provides. Iteration 3 uses Cortex AI, which is off by default on self-service [trial accounts](https://docs.snowflake.com/en/user-guide/admin-trial-account) until you add a credit card.
 - [Cortex Code Desktop](https://docs.snowflake.com/en/user-guide/cortex-code/cortex-code) installed and connected to your Snowflake account
 - [Snowflake CLI](https://docs.snowflake.com/developer-guide/snowflake-cli/installation/installation) v3.26.0 or later, with a connection named `quickstart` (or change the name in `.env` and `AGENTS.md`). After `grants.sql`, set the connection's default `role` to `SFQUICKSTART_CHURNGUARD_ROLE` and `warehouse` to `SFQUICKSTART_CHURNGUARD_WH`: `snow app deploy` uses the connection's default role, not `--role`.
 - [Node.js](https://nodejs.org/) 20+ and npm
-- `psql` (iteration 2)
 
 ## Quick Start
 
@@ -87,7 +86,7 @@ Each iteration builds on the previous one, and each one produces a deployable ap
 | Iteration | Merge into `my-app` | Setup | Prompts (in order) |
 |-----------|---------------------|-------|--------------------|
 | 1 | (start here) | `setup.sql`, `grants.sql`, `setup-data.sql` | [`01-build-explorer.md`](prompts/01-build-explorer.md) |
-| 2 | `origin/iteration-2/workflow-app` | Rerun `grants.sql`; then after the Postgres prompt, `iteration-2-setup.sql` | [`02-postgres-setup.md`](prompts/02-postgres-setup.md), [`02-add-workflow.md`](prompts/02-add-workflow.md) |
+| 2 | `origin/iteration-2/workflow-app` | Rerun `grants.sql`, then `iteration-2-setup.sql` | [`02-add-workflow.md`](prompts/02-add-workflow.md) |
 | 3 | `origin/iteration-3/ai-app` | Rerun `grants.sql`, then `iteration-3-setup.sql` | [`03-agent-setup.md`](prompts/03-agent-setup.md), [`03-add-agent.md`](prompts/03-add-agent.md) |
 
 Prompt links resolve on the branch that adds them. Run every script with `snow sql -f scripts/<file> --connection quickstart`. The files in `scripts/reference/` record what the setup prompts create; you don't need to run them.
@@ -132,13 +131,13 @@ flowchart LR
   it3 --> sol["solution"]
 ```
 
-Each branch is one commit on top of the previous one.
+Each iteration branch builds on the one before it, so merging the next one into `my-app` adds only what's new.
 
 | Branch | Adds |
 |--------|------|
 | `main` | `scripts/setup.sql`, `grants.sql`, `setup-data.sql`, `cleanup.sql`, `.env.example`, README, LICENSE |
 | `iteration-1/data-exploration` | `AGENTS.md`, `prompts/01-build-explorer.md` |
-| `iteration-2/workflow-app` | `prompts/02-postgres-setup.md`, `prompts/02-add-workflow.md`, `scripts/iteration-2-setup.sql`, `scripts/reference/postgres-*.sql`, iteration 2 grants and cleanup |
+| `iteration-2/workflow-app` | `prompts/02-add-workflow.md`, `scripts/iteration-2-setup.sql`, iteration 2 grants |
 | `iteration-3/ai-app` | `prompts/03-agent-setup.md`, `prompts/03-add-agent.md`, `scripts/iteration-3-setup.sql`, `scripts/reference/agent-setup.sql`, iteration 3 grants and cleanup |
 | `solution` | The complete `churnguard/` app through iteration 3 |
 
@@ -180,7 +179,7 @@ The full walkthrough, with screenshots, troubleshooting, and next steps, is at *
 
 ## Usage Markers
 
-The ChurnGuard app you build carries two anonymous labels: an `APP_ORIGIN` environment variable in `app.yml` and a `QUERY_TAG` on the app's queries. They tell Snowflake DevRel that an app started from this quickstart, so we can see which guides lead to apps people keep using. They hold no customer data, and the app works the same without them. To opt out, delete both (see [`AGENTS.md`](AGENTS.md) on an iteration branch).
+The ChurnGuard app you build carries one anonymous label: an `APP_ORIGIN` environment variable in `app.yml`. It tells Snowflake DevRel that an app started from this quickstart, so we can see which guides lead to apps people keep using. It holds no customer data, and the app works the same without it. To opt out, delete it (see [`AGENTS.md`](AGENTS.md) on an iteration branch).
 
 ## Cleanup
 
