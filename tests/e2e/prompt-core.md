@@ -160,8 +160,7 @@ At the end of the last stage (or whenever you stop), also add:
 Also maintain work/cleanup.md (create it if missing; update it at the end of every stage). Write the
 statements only, NEVER execute them:
 - A table: | object | type | created in stage | owner role | still exists (verified via SHOW) |
-  Include objects created implicitly (e.g. mirror target databases, integrations, secrets, network
-  rules, artifact repositories).
+  Include objects created implicitly (e.g. artifact repositories, code stages, and integrations).
 - A single ```sql block, in safe drop order (dependents first; the stage file may give the order),
   using IF EXISTS and the correct USE ROLE before each group.
 - A "Not covered by the guide's cleanup" list: objects in the table that the guide's cleanup script
