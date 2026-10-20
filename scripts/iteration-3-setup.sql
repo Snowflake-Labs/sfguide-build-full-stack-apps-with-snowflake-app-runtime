@@ -106,8 +106,9 @@ CREATE OR REPLACE TABLE PROPOSED_ACTIONS (
     RULE_ID        NUMBER,
     REASON         VARCHAR,
     SOURCE         VARCHAR      DEFAULT 'agent-scheduled',
-    PROPOSED_AT    TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    PROPOSED_AT    TIMESTAMP_LTZ DEFAULT CURRENT_TIMESTAMP(),
     STATUS         VARCHAR      DEFAULT 'pending',
+    STATUS_REASON  VARCHAR,     -- why a proposal was dismissed, e.g. already flagged
     CONSTRAINT pk_proposal PRIMARY KEY (PROPOSAL_ID)
 )
 COMMENT = 'Staged retention proposals: pending human approval before writing to ACTIONS';

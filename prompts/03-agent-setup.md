@@ -60,11 +60,13 @@ Requirements:
    - When the user asks to flag or stage actions, call
      stage_retention_actions right away with max_proposals = 5. Don't
      list candidates or ask for confirmation first: proposals are only
-     suggestions, and people approve them in the app. Summarize what
-     was staged.
+     suggestions, and people approve them on the app's Agent Suggested
+     tab, which the next prompt (03-add-agent.md) adds. Until then they
+     wait in PROPOSED_ACTIONS. Summarize what was staged.
    - Be concise; prefer a table for lists of customers
 
-5. Test in the agent playground with:
+5. Test the agent with these questions, in the Snowsight agent playground
+   or through the agent's REST API:
    - "Who are the top 5 high-risk customers by spend and what should we do?"
    - "Show the monthly churn trend as a chart"
    - "Flag high-risk customers for retention" (should call the tool)
