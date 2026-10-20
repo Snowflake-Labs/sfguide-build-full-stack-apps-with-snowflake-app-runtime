@@ -57,3 +57,11 @@ GRANT USAGE, OPERATE ON WAREHOUSE SFQUICKSTART_CHURNGUARD_WH TO ROLE SFQUICKSTAR
 -- TPC-DS sample data (shared database created by setup.sql)
 GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE_SAMPLE_DATA
     TO ROLE SFQUICKSTART_CHURNGUARD_ROLE;
+
+-- ---------------------------------------------------------------------------
+-- 5. Escalation alert (iteration 2)
+--    The ACTIONS table lives in the quickstart schema, which the role owns,
+--    so the workflow itself needs no extra grants.
+-- ---------------------------------------------------------------------------
+GRANT EXECUTE ALERT ON ACCOUNT
+    TO ROLE SFQUICKSTART_CHURNGUARD_ROLE;
