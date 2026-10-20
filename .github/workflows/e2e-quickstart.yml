@@ -72,8 +72,8 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install psql and envsubst
-        run: sudo apt-get update -q && sudo apt-get install -y -q postgresql-client gettext-base
+      - name: Install envsubst
+        run: sudo apt-get update -q && sudo apt-get install -y -q gettext-base
 
       - name: Setup Snowflake CLI + Cortex Code (OIDC)
         uses: snowflakedb/snowflake-actions@c30b16c0d61f26a9fa90906f255fa665b5f2abe1 # v3.3.2
