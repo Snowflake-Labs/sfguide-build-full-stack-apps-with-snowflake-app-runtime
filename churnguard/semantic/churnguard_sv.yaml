@@ -1,0 +1,210 @@
+# Copyright 2026 Snowflake Inc.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+name: CHURNGUARD_SV
+description: >-
+  ChurnGuard churn analytics: customer-level churn risk metrics, monthly churn trends,
+  playbook-driven retention recommendations, and retention action/notification status.
+tables:
+  - name: CHURN_METRICS
+    description: One row per customer with orders, spend, returns and churn risk.
+    synonyms: [customers, customer churn, churners, at-risk customers]
+    base_table: {database: SFQUICKSTART_CHURNGUARD, schema: PUBLIC, table: CHURN_METRICS}
+    primary_key: {columns: [C_CUSTOMER_SK]}
+    dimensions:
+      - name: CUSTOMER_KEY
+        expr: C_CUSTOMER_SK
+        data_type: NUMBER
+        description: Unique customer identifier.
+        synonyms: [customer id, customer]
+      - name: CREDIT_RATING
+        expr: CD_CREDIT_RATING
+        data_type: VARCHAR
+        description: Customer credit rating.
+        sample_values: [Low Risk, High Risk, Good, Unknown]
+      - name: MARITAL_STATUS
+        expr: CD_MARITAL_STATUS
+        data_type: VARCHAR
+      - name: EDUCATION_STATUS
+        expr: CD_EDUCATION_STATUS
+        data_type: VARCHAR
+      - name: GENDER
+        expr: CD_GENDER
+        data_type: VARCHAR
+      - name: CHURN_RISK
+        expr: CHURN_RISK
+        data_type: VARCHAR
+        description: Churn risk tier. 'High' means at-risk / likely churner.
+        synonyms: [risk level, at-risk, churner, risk tier]
+        sample_values: [High, Medium, Low]
+    facts:
+      - name: TOTAL_ORDERS
+        expr: TOTAL_ORDERS
+        data_type: NUMBER
+      - name: TOTAL_SPEND
+        expr: TOTAL_SPEND
+        data_type: NUMBER
+        synonyms: [spend, revenue, lifetime value]
+      - name: TOTAL_RETURNS
+        expr: TOTAL_RETURNS
+        data_type: NUMBER
+      - name: TOTAL_RETURN_AMT
+        expr: TOTAL_RETURN_AMT
+        data_type: NUMBER
+      - name: RETURN_RATE
+        expr: RETURN_RATE
+        data_type: FLOAT
+        description: Returns as a percentage of orders (0-100).
+    metrics:
+      - name: CUSTOMER_COUNT
+        expr: COUNT(DISTINCT C_CUSTOMER_SK)
+      - name: HIGH_RISK_CUSTOMER_COUNT
+        expr: COUNT(DISTINCT CASE WHEN CHURN_RISK = 'High' THEN C_CUSTOMER_SK END)
+        synonyms: [number of churners, at-risk count]
+      - name: SUM_SPEND
+        expr: SUM(TOTAL_SPEND)
+      - name: AVG_RETURN_RATE
+        expr: AVG(RETURN_RATE)
+
+  - name: CHURN_TRENDS
+    description: Monthly active vs churning customers.
+    base_table: {database: SFQUICKSTART_CHURNGUARD, schema: PUBLIC, table: CHURN_TRENDS}
+    dimensions:
+      - name: MONTH
+        expr: MONTH
+        data_type: VARCHAR
+        description: Month in YYYY-MM format.
+        sample_values: ['2002-01', '2002-06', '2002-12']
+    facts:
+      - name: ACTIVE_CUSTOMERS
+        expr: ACTIVE_CUSTOMERS
+        data_type: NUMBER
+      - name: CHURNING_CUSTOMERS
+        expr: CHURNING_CUSTOMERS
+        data_type: NUMBER
+        synonyms: [churners]
+    metrics:
+      - name: TOTAL_ACTIVE_CUSTOMERS
+        expr: SUM(ACTIVE_CUSTOMERS)
+      - name: TOTAL_CHURNING_CUSTOMERS
+        expr: SUM(CHURNING_CUSTOMERS)
+
+  - name: CUSTOMER_RECOMMENDATIONS
+    description: >-
+      One recommended retention action per customer from the first matching
+      RETENTION_PLAYBOOK rule, plus whether the customer already has an open action.
+    synonyms: [retention actions, playbook recommendations, recommendations, playbook]
+    base_table: {database: SFQUICKSTART_CHURNGUARD, schema: PUBLIC, table: CUSTOMER_RECOMMENDATIONS}
+    primary_key: {columns: [CUSTOMER_KEY]}
+    dimensions:
+      - name: REC_CUSTOMER_KEY
+        expr: CUSTOMER_KEY
+        data_type: NUMBER
+      - name: RECOMMENDED_ACTION
+        expr: RECOMMENDED_ACTION
+        data_type: VARCHAR
+        description: Playbook action type. Only these values are valid.
+        synonyms: [retention action, next best action, playbook action]
+        sample_values: [Escalate, Offer, Call, Email]
+      - name: RULE_ID
+        expr: RULE_ID
+        data_type: NUMBER
+        description: Playbook rule that produced the recommendation.
+      - name: REASON
+        expr: REASON
+        data_type: VARCHAR
+        description: Playbook rule reason explaining the recommendation.
+      - name: HAS_OPEN_ACTION
+        expr: HAS_OPEN_ACTION
+        data_type: BOOLEAN
+        description: TRUE if the customer already has an unresolved retention action.
+      - name: OPEN_ACTION_TYPE
+        expr: OPEN_ACTION_TYPE
+        data_type: VARCHAR
+    metrics:
+      - name: RECOMMENDATION_COUNT
+        expr: COUNT(*)
+
+  - name: ACTION_SUMMARY
+    description: Single-row summary of retention action counts by status and open escalations.
+    base_table: {database: SFQUICKSTART_CHURNGUARD, schema: PUBLIC, table: ACTION_SUMMARY}
+    facts:
+      - {name: TOTAL_ACTIONS, expr: TOTAL_ACTIONS, data_type: NUMBER}
+      - {name: NEW_COUNT, expr: NEW_COUNT, data_type: NUMBER}
+      - {name: IN_PROGRESS_COUNT, expr: IN_PROGRESS_COUNT, data_type: NUMBER}
+      - {name: RESOLVED_COUNT, expr: RESOLVED_COUNT, data_type: NUMBER}
+      - {name: OPEN_ESCALATIONS, expr: OPEN_ESCALATIONS, data_type: NUMBER, synonyms: [escalations]}
+      - {name: STALE_COUNT, expr: STALE_COUNT, data_type: NUMBER}
+
+  - name: NOTIFICATIONS
+    description: Alerts/notifications raised by ChurnGuard (e.g. escalations).
+    base_table: {database: SFQUICKSTART_CHURNGUARD, schema: PUBLIC, table: NOTIFICATIONS}
+    primary_key: {columns: [NOTIFICATION_ID]}
+    dimensions:
+      - {name: NOTIFICATION_ID, expr: NOTIFICATION_ID, data_type: VARCHAR}
+      - {name: MESSAGE, expr: MESSAGE, data_type: VARCHAR}
+      - {name: SEVERITY, expr: SEVERITY, data_type: VARCHAR, sample_values: [critical]}
+      - {name: ACKNOWLEDGED, expr: ACKNOWLEDGED, data_type: BOOLEAN}
+    time_dimensions:
+      - {name: CREATED_AT, expr: CREATED_AT, data_type: TIMESTAMP_NTZ}
+    metrics:
+      - {name: NOTIFICATION_COUNT, expr: COUNT(*)}
+
+relationships:
+  - name: RECS_TO_METRICS
+    left_table: CUSTOMER_RECOMMENDATIONS
+    right_table: CHURN_METRICS
+    relationship_columns:
+      - {left_column: CUSTOMER_KEY, right_column: C_CUSTOMER_SK}
+
+verified_queries:
+  - name: top_high_risk_customers_by_spend
+    question: Who are the top 10 high-risk customers by spend and what should we do?
+    use_as_onboarding_question: true
+    sql: |
+      SELECT m.CUSTOMER_KEY, m.CREDIT_RATING, m.TOTAL_SPEND, m.RETURN_RATE,
+             r.RECOMMENDED_ACTION, r.REASON, r.HAS_OPEN_ACTION
+      FROM __CHURN_METRICS m
+      JOIN __CUSTOMER_RECOMMENDATIONS r ON r.REC_CUSTOMER_KEY = m.CUSTOMER_KEY
+      WHERE m.CHURN_RISK = 'High'
+      ORDER BY m.TOTAL_SPEND DESC NULLS LAST
+      LIMIT 10
+  - name: churn_risk_by_credit_rating
+    question: What is the churn risk breakdown by credit rating?
+    use_as_onboarding_question: true
+    sql: |
+      SELECT CREDIT_RATING, CHURN_RISK,
+             COUNT(DISTINCT CUSTOMER_KEY) AS CUSTOMER_COUNT
+      FROM __CHURN_METRICS
+      GROUP BY CREDIT_RATING, CHURN_RISK
+      ORDER BY CREDIT_RATING, CHURN_RISK
+  - name: monthly_churn_trend
+    question: Show the monthly churn trend
+    use_as_onboarding_question: true
+    sql: |
+      SELECT MONTH, SUM(ACTIVE_CUSTOMERS) AS ACTIVE_CUSTOMERS,
+             SUM(CHURNING_CUSTOMERS) AS CHURNING_CUSTOMERS
+      FROM __CHURN_TRENDS
+      GROUP BY MONTH
+      ORDER BY MONTH
+  - name: high_risk_no_open_action
+    question: Which high-risk customers have no open action?
+    use_as_onboarding_question: true
+    sql: |
+      SELECT m.CUSTOMER_KEY, m.TOTAL_SPEND, m.RETURN_RATE, r.RECOMMENDED_ACTION, r.REASON
+      FROM __CHURN_METRICS m
+      JOIN __CUSTOMER_RECOMMENDATIONS r ON r.REC_CUSTOMER_KEY = m.CUSTOMER_KEY
+      WHERE m.CHURN_RISK = 'High' AND r.HAS_OPEN_ACTION = FALSE
+      ORDER BY m.TOTAL_SPEND DESC NULLS LAST
+      LIMIT 20
